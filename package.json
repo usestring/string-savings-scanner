@@ -2,7 +2,7 @@
   "name": "string-savings-scanner",
   "version": "0.1.0",
   "private": true,
-  "description": "Scan a codebase for web scraping integrations and estimate equivalent String workload costs.",
+  "description": "Audit web retrieval workflows and estimate total String, compute and model-context costs.",
   "type": "module",
   "license": "MIT",
   "bin": {
@@ -18,7 +18,8 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@babel/parser": "8.0.4"
+    "@babel/parser": "8.0.4",
+    "@babel/traverse": "8.1.0"
   },
   "devDependencies": {
     "@types/bun": "1.3.10",

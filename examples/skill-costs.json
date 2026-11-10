@@ -1,0 +1,63 @@
+{
+  "version": 2,
+  "workloads": [
+    {
+      "findingId": "examples/page-reading.before.md#read-and-summarize",
+      "label": "Agent skill: curl to summarize (synthetic)",
+      "monthlyResults": 100000,
+      "current": {
+        "pricingUrl": "https://example.com/synthetic-workflow-costs",
+        "checkedAt": "2026-11-10",
+        "unit": "request",
+        "usdPerUnit": 0,
+        "unitsPerAttempt": 1,
+        "billedFraction": 1,
+        "attemptsPerJob": 1,
+        "deliveryRate": 1,
+        "includedMonthlyUnits": 0,
+        "minimumMonthlyUsd": 0,
+        "fixedMonthlyUsd": 0,
+        "addonsMonthlyUsd": 0,
+        "resources": [
+          {
+            "label": "Model input context",
+            "basis": "result",
+            "quantity": 0.008,
+            "unit": "million input tokens",
+            "usdPerUnit": 3,
+            "source": "Synthetic token count and model rate; replace with target-tokenizer measurements and current model pricing."
+          }
+        ]
+      },
+      "proposed": {
+        "pricingUrl": "https://usestring.ai/pricing",
+        "checkedAt": "2026-11-10",
+        "unit": "request",
+        "usdPerUnit": 0.00025,
+        "unitsPerAttempt": 1,
+        "billedFraction": 1,
+        "attemptsPerJob": 1,
+        "deliveryRate": 1,
+        "includedMonthlyUnits": 0,
+        "minimumMonthlyUsd": 19,
+        "fixedMonthlyUsd": 0,
+        "addonsMonthlyUsd": 0,
+        "resources": [
+          {
+            "label": "Model input context",
+            "basis": "result",
+            "quantity": 0.001,
+            "unit": "million input tokens",
+            "usdPerUnit": 3,
+            "source": "Synthetic token count and model rate; replace with target-tokenizer measurements and current model pricing."
+          }
+        ]
+      },
+      "retainedCurrentMonthlyUsd": 0,
+      "migrationHours": 4,
+      "engineeringUsdPerHour": 100,
+      "compatibility": "unverified",
+      "notes": "Workflow evidence: examples/page-reading.before.md:3-6 fetches HTML into reading context; page-reading.after.md uses String markdown. Token counts and model price are synthetic, not measured task quality or reduction. Use actual tokenizer measurements and billed route mix before migration."
+    }
+  ]
+}

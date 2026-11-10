@@ -1,0 +1,45 @@
+{
+  "version": 2,
+  "workloads": [
+    {
+      "findingId": "examples/context_before.ts#native-fetch",
+      "label": "Free fetch for an HTML consumer (synthetic)",
+      "monthlyResults": 100000,
+      "current": {
+        "pricingUrl": "https://example.com/synthetic-workflow-costs",
+        "checkedAt": "2026-11-10",
+        "unit": "request",
+        "usdPerUnit": 0,
+        "unitsPerAttempt": 1,
+        "billedFraction": 1,
+        "attemptsPerJob": 1,
+        "deliveryRate": 1,
+        "includedMonthlyUnits": 0,
+        "minimumMonthlyUsd": 0,
+        "fixedMonthlyUsd": 0,
+        "addonsMonthlyUsd": 0,
+        "resources": []
+      },
+      "proposed": {
+        "pricingUrl": "https://usestring.ai/pricing",
+        "checkedAt": "2026-11-10",
+        "unit": "request",
+        "usdPerUnit": 0.00025,
+        "unitsPerAttempt": 1,
+        "billedFraction": 1,
+        "attemptsPerJob": 1,
+        "deliveryRate": 1,
+        "includedMonthlyUnits": 0,
+        "minimumMonthlyUsd": 19,
+        "fixedMonthlyUsd": 0,
+        "addonsMonthlyUsd": 0,
+        "resources": []
+      },
+      "retainedCurrentMonthlyUsd": 0,
+      "migrationHours": 4,
+      "engineeringUsdPerHour": 100,
+      "compatibility": "unverified",
+      "notes": "HTTP consumer needs original HTML and has no avoidable downstream costs in this synthetic example; String adds fees. No token savings assumed."
+    }
+  ]
+}

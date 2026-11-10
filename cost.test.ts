@@ -69,3 +69,38 @@ test("stale pricing blocks candidate status and invalid calendar dates remain un
   const invalid = analyze({ ...workload, current: { ...quote, checkedAt: "2026-02-30" } }, "2026-11-10");
   expect(invalid.status).toBe("unknown");
 });
+
+test("prices the complete plain-fetch workflow and retains a free-fetch no-savings outcome", async () => {
+  const context = (await Bun.file(new URL("./examples/context-costs.json", import.meta.url)).json()).workloads[0];
+  const result = analyze(context, "2026-11-10");
+  expect(result.current?.serviceMonthlyUsd).toBe(0);
+  expect(result.current?.resourceMonthlyUsd).toBe(2400);
+  expect(result.proposed?.serviceMonthlyUsd).toBe(25);
+  expect(result.proposed?.resourceMonthlyUsd).toBe(300);
+  expect(result.savingsMonthlyUsd).toBe(2075);
+  expect(result.status).toBe("validate-first");
+  const free = (await Bun.file(new URL("./examples/free-fetch-costs.json", import.meta.url)).json()).workloads[0];
+  expect(analyze(free, "2026-11-10").savingsMonthlyUsd).toBe(-25);
+  expect(analyze(free, "2026-11-10").status).toBe("no-savings");
+});
+
+test("charges retry compute per attempt, tokens per result and fixed costs once", () => {
+  const current = { ...quote, resources: [
+    { label: "Compute", basis: "attempt", quantity: 2, unit: "second", usdPerUnit: 0.001, source: "Synthetic" },
+    { label: "Tokens", basis: "result", quantity: 100, unit: "token", usdPerUnit: 0.00001, source: "Synthetic" },
+    { label: "Fixed", basis: "month", quantity: 1, unit: "month", usdPerUnit: 10, source: "Synthetic" }
+  ] };
+  const result = analyze({ ...workload, current }, "2026-11-10");
+  expect(result.current?.resources.map(item => item.monthlyUsd)).toEqual([6, 1, 10]);
+  expect(result.current?.monthlyUsd).toBe(73);
+  const incomplete = { ...current, resources: [{ ...current.resources[0], usdPerUnit: null }] };
+  expect(analyze({ ...workload, current: incomplete }, "2026-11-10").status).toBe("unknown");
+  expect(() => analyze({ ...workload, current: { ...current, resources: [{ ...current.resources[0], quantity: -1 }] } }, "2026-11-10")).toThrow();
+});
+
+test("versioned inputs prevent old calculators from silently dropping resource costs", () => {
+  expect(parseWorkloads({ version: 1, workloads: [workload] }).size).toBe(1);
+  const expanded = { ...workload, current: { ...quote, resources: [] } };
+  expect(() => parseWorkloads({ version: 1, workloads: [expanded] })).toThrow();
+  expect(parseWorkloads({ version: 2, workloads: [expanded] }).size).toBe(1);
+});

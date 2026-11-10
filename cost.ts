@@ -1,4 +1,13 @@
+export type ResourceCost = {
+  label: string;
+  basis: "attempt" | "result" | "month";
+  quantity: number;
+  unit: string;
+  usdPerUnit: number;
+  source: string;
+};
 export type Quote = {
+  resources?: ResourceCost[];
   pricingUrl: string;
   checkedAt: string;
   unit: string;
@@ -41,6 +50,19 @@ function validateQuote(quote: any, name: string, missing: string[], warnings: st
   requiredNumber(quote.attemptsPerJob, `${name}.attemptsPerJob`, missing, 1);
   requiredNumber(quote.deliveryRate, `${name}.deliveryRate`, missing, Number.MIN_VALUE, 1);
   requiredNumber(quote.billedFraction, `${name}.billedFraction`, missing, 0, 1);
+  if (quote.resources !== undefined) {
+    if (!Array.isArray(quote.resources)) throw new Error(`${name}.resources must be an array`);
+    for (const [index, item] of quote.resources.entries()) {
+      const prefix = `${name}.resources[${index}]`;
+      if (!item || typeof item !== "object") { missing.push(prefix); continue; }
+      for (const field of ["label", "unit", "source"]) {
+        if (typeof item[field] !== "string" || !item[field].trim()) missing.push(`${prefix}.${field}`);
+      }
+      if (!["attempt", "result", "month"].includes(item.basis)) missing.push(`${prefix}.basis`);
+      requiredNumber(item.quantity, `${prefix}.quantity`, missing);
+      requiredNumber(item.usdPerUnit, `${prefix}.usdPerUnit`, missing);
+    }
+  }
   if (typeof quote.unit !== "string" || !quote.unit.trim()) missing.push(`${name}.unit`);
   if (typeof quote.pricingUrl !== "string" || !/^https:\/\/[^\s]+$/.test(quote.pricingUrl)) missing.push(`${name}.pricingUrl`);
   const date = typeof quote.checkedAt === "string" && /^\d{4}-\d{2}-\d{2}$/.test(quote.checkedAt)
@@ -57,9 +79,15 @@ export function quoteCost(monthlyResults: number, quote: Quote) {
   const attempts = monthlyResults * quote.attemptsPerJob / quote.deliveryRate;
   const billableUnits = attempts * quote.billedFraction * quote.unitsPerAttempt;
   const usageUsd = Math.max(0, billableUnits - quote.includedMonthlyUnits) * quote.usdPerUnit;
-  const monthlyUsd = quote.fixedMonthlyUsd + Math.max(quote.minimumMonthlyUsd, usageUsd) + quote.addonsMonthlyUsd;
+  const resources = (quote.resources ?? []).map(item => ({
+    ...item,
+    monthlyUsd: (item.basis === "attempt" ? attempts : item.basis === "result" ? monthlyResults : 1) * item.quantity * item.usdPerUnit
+  }));
+  const resourceMonthlyUsd = resources.reduce((sum, item) => sum + item.monthlyUsd, 0);
+  const serviceMonthlyUsd = quote.fixedMonthlyUsd + Math.max(quote.minimumMonthlyUsd, usageUsd) + quote.addonsMonthlyUsd;
+  const monthlyUsd = serviceMonthlyUsd + resourceMonthlyUsd;
   if (![attempts, billableUnits, usageUsd, monthlyUsd].every(Number.isFinite)) throw new Error("Cost calculation overflow");
-  return { attempts, billableUnits, usageUsd, monthlyUsd };
+  return { attempts, billableUnits, usageUsd, serviceMonthlyUsd, resources, resourceMonthlyUsd, monthlyUsd };
 }
 
 export function analyze(workload: any, asOf: string) {
@@ -94,11 +122,14 @@ export function analyze(workload: any, asOf: string) {
 }
 
 export function parseWorkloads(input: any): Map<string, Workload> {
-  if (input?.version !== 1 || !Array.isArray(input.workloads)) throw new Error("Config requires version: 1 and workloads: []");
+  if (![1, 2].includes(input?.version) || !Array.isArray(input.workloads)) throw new Error("Config requires version: 1 or 2 and workloads: []");
   const workloads = new Map<string, Workload>();
   for (const workload of input.workloads) {
     if (typeof workload?.findingId !== "string" || !workload.findingId) throw new Error("Each workload needs a findingId");
     if (workloads.has(workload.findingId)) throw new Error(`Duplicate workload: ${workload.findingId}`);
+    if (input.version === 1 && (workload.current?.resources !== undefined || workload.proposed?.resources !== undefined)) {
+      throw new Error("Itemized resources require config version: 2 so older scanners cannot silently ignore them");
+    }
     workloads.set(workload.findingId, workload);
   }
   return workloads;
