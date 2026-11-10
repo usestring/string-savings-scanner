@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "workloads": [
+    {
+      "findingId": "examples/pilot_before.ts#firecrawl",
+      "label": "Illustrative 100,000 fresh page results, not measured production traffic",
+      "monthlyResults": 100000,
+      "current": {
+        "pricingUrl": "https://example.com/synthetic-provider-quote",
+        "checkedAt": "2026-11-10",
+        "unit": "request",
+        "usdPerUnit": 0.002,
+        "unitsPerAttempt": 1,
+        "billedFraction": 0.9047619047619047,
+        "attemptsPerJob": 1.05,
+        "deliveryRate": 0.95,
+        "includedMonthlyUnits": 0,
+        "minimumMonthlyUsd": 49,
+        "fixedMonthlyUsd": 0,
+        "addonsMonthlyUsd": 0
+      },
+      "proposed": {
+        "pricingUrl": "https://usestring.ai/pricing",
+        "checkedAt": "2026-11-10",
+        "unit": "request",
+        "usdPerUnit": 0.0012,
+        "unitsPerAttempt": 1,
+        "billedFraction": 0.9047619047619047,
+        "attemptsPerJob": 1.05,
+        "deliveryRate": 0.95,
+        "includedMonthlyUnits": 0,
+        "minimumMonthlyUsd": 19,
+        "fixedMonthlyUsd": 0,
+        "addonsMonthlyUsd": 0
+      },
+      "retainedCurrentMonthlyUsd": 0,
+      "migrationHours": 4,
+      "engineeringUsdPerHour": 100,
+      "compatibility": "unverified",
+      "notes": "Current-provider rate and both workload success/billing ratios are synthetic assumptions, not a Firecrawl quote. String Starter standard browser rate and $19 usage minimum from published pricing checked 2026-11-10. Tier mix, freshness, latency, feature parity and invoice timing remain unverified. No existing balance, free credits or other workloads assumed. No production savings have been measured."
+    }
+  ]
+}
