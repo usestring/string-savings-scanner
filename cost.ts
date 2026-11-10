@@ -122,7 +122,8 @@ export function analyze(workload: any, asOf: string) {
 }
 
 export function parseWorkloads(input: any): Map<string, Workload> {
-  if (![1, 2].includes(input?.version) || !Array.isArray(input.workloads)) throw new Error("Config requires version: 1 or 2 and workloads: []");
+  if (![1, 2, 3].includes(input?.version) || !Array.isArray(input.workloads)) throw new Error("Config requires version: 1, 2 or 3 and workloads: []");
+  if (input.version !== 3 && input.usageProjection !== undefined) throw new Error("Usage projection inputs require config version: 3");
   const workloads = new Map<string, Workload>();
   for (const workload of input.workloads) {
     if (typeof workload?.findingId !== "string" || !workload.findingId) throw new Error("Each workload needs a findingId");
