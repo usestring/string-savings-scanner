@@ -1,0 +1,69 @@
+{
+  "version": 3,
+  "workloads": [],
+  "usageProjection": {
+    "cohorts": [
+      {
+        "assistant": "codex",
+        "users": 10,
+        "sessionsPerUserPerDay": 4,
+        "activeDaysPerMonth": 20,
+        "eligibleFraction": 1,
+        "fetchesPerSession": {
+          "kind": "sampled",
+          "counts": [
+            0,
+            0,
+            1,
+            3,
+            6
+          ],
+          "source": "Synthetic five-session sample, including zeros; demonstrates mean/median only. Replace with representative counts over a documented observation window."
+        }
+      }
+    ],
+    "billing": "metered",
+    "context": {
+      "currentTokensPerFetch": 8000,
+      "proposedTokensPerFetch": 1000,
+      "usdPerMillion": 3,
+      "source": "Synthetic token counts and $3/million rate, not a model price quote. Replace with paired payload tokenization and marginal billing rates; do not duplicate these tokens in workload resources."
+    },
+    "workload": {
+      "label": "Illustrative public-page reading population",
+      "current": {
+        "pricingUrl": "https://example.com/synthetic-workflow-costs",
+        "checkedAt": "2026-11-10",
+        "unit": "request",
+        "usdPerUnit": 0,
+        "unitsPerAttempt": 1,
+        "billedFraction": 1,
+        "attemptsPerJob": 1,
+        "deliveryRate": 1,
+        "includedMonthlyUnits": 0,
+        "minimumMonthlyUsd": 0,
+        "fixedMonthlyUsd": 0,
+        "addonsMonthlyUsd": 0
+      },
+      "proposed": {
+        "pricingUrl": "https://usestring.ai/pricing",
+        "checkedAt": "2026-11-10",
+        "unit": "request",
+        "usdPerUnit": 0.00025,
+        "unitsPerAttempt": 1,
+        "billedFraction": 1,
+        "attemptsPerJob": 1,
+        "deliveryRate": 1,
+        "includedMonthlyUnits": 0,
+        "minimumMonthlyUsd": 19,
+        "fixedMonthlyUsd": 0,
+        "addonsMonthlyUsd": 0
+      },
+      "retainedCurrentMonthlyUsd": 0,
+      "migrationHours": 4,
+      "engineeringUsdPerHour": 100,
+      "compatibility": "unverified",
+      "notes": "Planning only. Standard request-based String price and usage minimum checked 2026-11-10; browser/premium routing can cost more. Direct fetch is assumed free. Token reduction, rates, user activity and zero other costs are synthetic assumptions. Subscription fees are unchanged and cancel from the incremental comparison."
+    }
+  }
+}

@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { scanRepository, scanSource } from "./scanner.ts";
+import { scanInstructions, scanRepository, scanSource } from "./scanner.ts";
 
 test("detects supported SDK references and endpoint URLs without leaking source literals", () => {
   const source = [
@@ -97,4 +97,24 @@ test("generic retrieval reports evidence without exposing credentials or target 
   expect(findings[0].provider).toBe("native-fetch");
   expect(JSON.stringify(findings)).not.toContain("DO_NOT_PRINT");
   expect(JSON.stringify(findings)).not.toContain("example.com");
+});
+
+
+test("indexes skill-only repositories without publishing instruction content or URLs", async () => {
+  const root = await mkdtemp(join(tmpdir(), "string-skill-test-"));
+  try {
+    Bun.spawnSync(["git", "init", "-q", root]);
+    await writeFile(join(root, "SKILL.md"), "---\nname: page-reader\n---\nUse WebFetch on https://example.com/?token=DO_NOT_PRINT");
+    Bun.spawnSync(["git", "-C", root, "add", "SKILL.md"]);
+    const report = await scanRepository(root);
+    expect(report.scannedFiles).toBe(1);
+    expect(report.findings[0].id).toBe("SKILL.md#skill");
+    expect(report.findings[0].evidence).toEqual([{ line: 4, kind: "fetch-instruction" }]);
+    expect(JSON.stringify(report)).not.toContain("DO_NOT_PRINT");
+    expect(scanInstructions("SKILL.md", "Explain a topic")[0].evidence[0].kind).toBe("skill-definition");
+    expect(scanInstructions("README.md", "<!-- Use WebFetch -->\nhttps://example.com/")).toEqual([]);
+    expect(scanInstructions("commands/read.md", "<!--\nUse WebFetch\n-->\nUse curl to read a public page")[0].evidence).toEqual([{ line: 4, kind: "fetch-instruction" }]);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });

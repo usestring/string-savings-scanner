@@ -17,14 +17,15 @@ bun cli.ts --repo /absolute/path/to/repository > /tmp/string-findings.json
 bun cli.ts --repo /absolute/path/to/repository --config /path/to/costs.local.json > /tmp/string-costs.json
 ```
 
-`--repo` must identify a Git root. Only tracked `.js`, `.jsx`, `.ts`, `.tsx`, `.mjs`, `.cjs`, `.mts` and `.cts` files are inspected, including working-tree edits to tracked files. Untracked files, symlinks, generated directories and files over 1 MiB are excluded. Submodules are separate repositories: run the command on each one you want to inspect. Read/parse failures appear in `warnings`; a partial scan does not establish the absence of integrations.
+`--repo` must identify a Git root. Tracked Markdown (`.md`) skill/instruction files and `.js`, `.jsx`, `.ts`, `.tsx`, `.mjs`, `.cjs`, `.mts` and `.cts` code files are inspected, including working-tree edits to tracked files. Untracked files, symlinks, generated directories and files over 1 MiB are excluded. Submodules are separate repositories: run the command on each one you want to inspect. Read/parse failures appear in `warnings`; a partial scan does not establish the absence of integrations.
 
 ## Start with the audit skill
 
 Give your coding agent [skills/find-string-savings/SKILL.md](skills/find-string-savings/SKILL.md) and ask it to audit your repository for String savings. The skill traces retrieval through callers and consumers, measures the relevant costs, compares alternatives and implements worthwhile changes when requested. It covers source code, existing fetch skills, prompts and scripts, including Python and curl workflows outside the automatic scanner's scope.
 
-The CLI is a local index and calculator for that analysis. Its AST-based discovery finds:
+The CLI is a local index and calculator for that analysis. It discovers:
 
+- `SKILL.md` inventory and Markdown instructions mentioning page reads, WebFetch, curl/wget or fetch/navigation tools. Skill definitions without a fetch mention are inventory leads that need inspection.
 - Native `fetch` calls, including simple aliases and `globalThis.fetch`/`window.fetch`.
 - Calls through `node-fetch`, `cross-fetch`, `undici`, Axios, Got and Node HTTP/HTTPS, including imported aliases and simple client factories.
 - Playwright/Puppeteer navigation through locally traceable browser/page bindings.
@@ -36,11 +37,52 @@ A plain fetch that passes raw HTML to a model may benefit from readable Markdown
 
 Findings contain file/line evidence without copying source or target URLs into reports. Findings group by file and retrieval kind/provider, with stable IDs such as `src/read.ts#native-fetch` or `src/client.ts#firecrawl`. Multiple kinds in one file can describe the same pipeline: do not sum them. If a wrapper has several billing modes or callers, analyze a measured combined mix or split the traffic. Static reference counts are never request volume.
 
+## Project Claude Code and Codex usage
+
+Every report includes one separate `usageProjection`, even for a skill-only repository or one with no indexed fetch calls. It estimates the selected active user population, independent of the number of skills, users inferred from Git, or code references. Default inputs are **illustrative planning assumptions**, not a published median/average: one active user, four sessions/day, 20 active days/month, and low/base/high of 1/3/10 eligible page reads/session. That projects **80/240/800 page reads per user/month**. The same assumptions apply to Claude Code and Codex; no measured difference is claimed.
+
+```bash
+bun cli.ts --repo /path/to/skills-repository --users 10 --assistant claude-code
+bun cli.ts --repo /path/to/repository --users 10 --assistant codex --billing metered
+bun cli.ts --analysis-only --config examples/usage-projection.json
+bun cli.ts --analysis-only --config examples/sampled-usage.json
+```
+
+`--assistant` is `claude-code`, `codex` or `mixed` (default); `--users` is an active-user count (default 1). Repository popularity or installing a skill does not establish activity. Defaults use `--billing subscription`: freed token capacity does **not** reduce an unchanged Claude Code/Codex subscription invoice. The cash comparison includes the added String bill and other explicitly supplied avoidable costs. `--billing metered` illustrates genuinely avoidable token charges. The default $3/million rate and 8,000 → 1,000 input tokens per page are synthetic, independent of assistant or model choice. They are not observed WebFetch payloads or model price quotes.
+
+Use a version-3 config's `usageProjection` to replace all assumptions. Projection flags and a configured plan cannot be combined. The two example files show the full schema. Each cohort supplies `assistant`, `users`, `sessionsPerUserPerDay`, `activeDaysPerMonth`, `eligibleFraction` and `fetchesPerSession`. Distinct cohorts can have different activity patterns; do not count the same users' same sessions under both assistants. Each rate includes a `source` explaining evidence or assumptions:
+
+- `kind: "assumed"`, with ordered `low`, `base`, `high`: a sensitivity range. Base is not labeled a measured mean or median.
+- `kind: "sampled"`, with `counts: [0, 0, 1, 3, 6]`: one count for **every** session in a representative window, including zero-fetch sessions. The calculator reports sample arithmetic mean (2), median (1) and sample size. Base uses the mean to project total volume; an additional median scenario shows typical-session volume. Low/high use observed extrema, not statistical confidence bounds. A sample describes its selected users/window, not all assistant users.
+
+```text
+monthly eligible reads = users × sessions/user/day × active days/month
+                         × reads/session × eligible fraction
+```
+
+Reports expose per-user monthly counts, each cohort's statistics and combined scenario volume. `context` supplies `currentTokensPerFetch`, `proposedTokensPerFetch`, `usdPerMillion` and `source`. Measure the actual billable context consumed, including cached rates, existing cleanup/truncation, repeated use and quality; do not assume a built-in fetch tool sends raw HTML. Context tokens are added to both quotes automatically. Other `workload.resources` must exclude those same tokens.
+
+The `workload` follows the cost schema below, without `monthlyResults` or `findingId`: volume is derived from the cohorts. Quotes describe one combined account/workload, so the monthly minimum is charged once. The low/base/high and median cases are alternatives. Do not add their savings, or add this population estimate to finding-level estimates of the same traffic. If different routes/prices cannot be represented by a justified combined quote, analyze them separately and allocate shared fees explicitly. `billing: "subscription"` assigns zero marginal cash cost to the projected context tokens while still reporting token capacity; supply real metered overages only when avoidable.
+
+For ten active users under the default **metered illustration**:
+
+| Case | Monthly reads | Current cost | With String | Net savings |
+| --- | --- | --- | --- | --- |
+| Low | 800 | $19.20 | $21.40 | −$2.20 |
+| Base | 2,400 | $57.60 | $26.20 | $31.40 |
+| High | 8,000 | $192.00 | $43.00 | $149.00 |
+
+This uses the synthetic token assumptions above, free direct HTTP, String's standard request-based rate and one $19 minimum. Four migration hours at $100/hour yield about 12.74 months of payback in the base case. Under an unchanged subscription, the same base case frees a hypothetical 16.8 million input tokens/month but adds $19/month in cash spend. Real routing, task quality and marginal billing can change either outcome.
+
+In the synthetic sample `[0, 0, 1, 3, 6]`, ten users project 1,600 reads/month using the mean versus 800 using the median: $14.60 versus −$2.20 in the metered illustration. This is why the tool keeps both statistics rather than treating a median as total expected traffic.
+
+We did not find a population fetch median/mean in the official documentation checked on 2026-11-10. [Claude Code monitoring](https://code.claude.com/docs/en/monitoring-usage) documents session counters and tool-result events for obtaining your own measurements. [Codex web search](https://developers.openai.com/codex/web-search) describes cached-index and live modes; a cached-index lookup or search is not automatically a replaceable live page fetch. Normalize eligible page-read counts locally, deduplicate retries and retain zero sessions. The scanner accepts counts, does not collect transcripts and never exports them.
+
 ## Cost inputs
 
-Copy [examples/costs.json](examples/costs.json) and replace the finding ID, usage, quotes and notes. Keep account-specific inputs in a `*.local.json` file outside a shared report. Every charge component is explicit, including zero. Missing or null fields produce `unknown` with missing field names; invalid numeric values, duplicate IDs and unmatched IDs fail the command. There is no default provider price or assumed traffic.
+Copy [examples/costs.json](examples/costs.json) and replace the finding ID, usage, quotes and notes. Keep account-specific inputs in a `*.local.json` file outside a shared report. Every charge component is explicit, including zero. Missing or null fields produce `unknown` with missing field names; invalid numeric values, duplicate IDs and unmatched IDs fail the command. Finding-specific costs require supplied workload inputs. A separate user-population projection provides editable illustrative assumptions; it never derives traffic from reference counts.
 
-Reports use version 2 for the expanded retrieval kinds and cost breakdown. Resource inputs require config `version: 2`; older scanners reject it rather than silently dropping downstream costs. Legacy `version: 1` inputs without resources remain supported.
+Reports use version 3 for skill discovery and user-population projections. A `usageProjection` input requires config `version: 3` with `workloads: []` or existing workload entries; older scanners reject it. Config versions 1 and 2 remain supported. Resource inputs require config `version: 2`; older scanners reject it rather than silently dropping downstream costs. Legacy `version: 1` inputs without resources remain supported.
 
 Each workload supplies:
 

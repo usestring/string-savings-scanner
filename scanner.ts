@@ -3,12 +3,12 @@ import { retrievalCalls, type RetrievalKind, type RetrievalEvidence } from "./re
 import { lstat, readFile, realpath } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve } from "node:path";
 
-export type Provider = "firecrawl" | "scrapingbee" | RetrievalKind;
+export type Provider = "firecrawl" | "scrapingbee" | "skill" | RetrievalKind;
 export type Finding = {
   id: string;
   file: string;
   provider: Provider;
-  evidence: { line: number; kind: "sdk-import" | "api-url" | RetrievalEvidence["kind"] }[];
+  evidence: { line: number; kind: "sdk-import" | "api-url" | "fetch-instruction" | "skill-definition" | RetrievalEvidence["kind"] }[];
   opportunities?: string[];
   replacement: string;
   compatibilityChecks: string[];
@@ -93,6 +93,25 @@ export function scanSource(file: string, source: string): Finding[] {
   return [...findings.values()];
 }
 
+export function scanInstructions(file: string, source: string): Finding[] {
+  const isSkill = /(^|\/)SKILL\.md$/i.test(file);
+  const evidence: Finding["evidence"] = [];
+  const visibleSource = source.replace(/<!--[\s\S]*?(?:-->|$)/g, comment => comment.replace(/[^\n]/g, ""));
+  for (const [index, visible] of visibleSource.split("\n").entries()) {
+    if (/\b(?:WebFetch|web_access_fetch|browser_navigate|curl|wget)\b|\bfetch(?:ing)?\s+(?:a\s+|the\s+|public\s+)?(?:web\s+)?(?:page|url|content)s?\b/i.test(visible)) {
+      evidence.push({ line: index + 1, kind: "fetch-instruction" });
+    }
+  }
+  if (!evidence.length && !isSkill) return [];
+  return [{
+    id: `${file}#skill`, file, provider: "skill",
+    evidence: evidence.length ? evidence : [{ line: 1, kind: "skill-definition" }],
+    replacement: "Review this skill or instruction workflow for public-page reading through String Web Access.",
+    opportunities: ["A skill may request web reads through tools, scripts or implicit page-reading instructions. Inspect the full workflow.", "Use a user/session usage projection even when this repository contains no HTTP implementation."],
+    compatibilityChecks: ["A skill definition or textual tool mention is an inventory lead, not proof of fetch activity or eligibility.", ...compatibilityChecks]
+  }];
+}
+
 export async function scanRepository(input: string) {
   const root = await realpath(resolve(input));
   const command = Bun.spawn(["git", "-C", root, "ls-files", "--cached", "--full-name", "-z"], { stdout: "pipe", stderr: "pipe" });
@@ -106,7 +125,7 @@ export async function scanRepository(input: string) {
   const warnings: string[] = [];
   let scannedFiles = 0;
   for (const file of [...new Set(files.split("\0"))].sort()) {
-    if (!/\.[cm]?[jt]sx?$/.test(file) || /(^|\/)(node_modules|dist|build|vendor|\.git)(\/|$)/.test(file)) continue;
+    if ((!/\.[cm]?[jt]sx?$/.test(file) && !/\.md$/i.test(file)) || /(^|\/)(node_modules|dist|build|vendor|\.git)(\/|$)/.test(file)) continue;
     const path = resolve(root, file);
     if (isAbsolute(relative(root, path)) || relative(root, path).startsWith("..")) continue;
     try {
@@ -120,7 +139,7 @@ export async function scanRepository(input: string) {
       if (symlink) { warnings.push(`${file}: skipped symlink`); continue; }
       if ((await lstat(path)).size > 1024 * 1024) { warnings.push(`${file}: exceeds 1 MiB limit`); continue; }
       const source = await readFile(path, "utf8");
-      findings.push(...scanSource(file, source));
+      findings.push(...(/\.md$/i.test(file) ? scanInstructions(file, source) : scanSource(file, source)));
       scannedFiles++;
     } catch {
       warnings.push(`${file}: could not read or parse; findings may be incomplete`);
