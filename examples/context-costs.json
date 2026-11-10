@@ -1,0 +1,63 @@
+{
+  "version": 2,
+  "workloads": [
+    {
+      "findingId": "examples/context_before.ts#native-fetch",
+      "label": "Plain fetch to model context (synthetic)",
+      "monthlyResults": 100000,
+      "current": {
+        "pricingUrl": "https://example.com/synthetic-workflow-costs",
+        "checkedAt": "2026-11-10",
+        "unit": "request",
+        "usdPerUnit": 0,
+        "unitsPerAttempt": 1,
+        "billedFraction": 1,
+        "attemptsPerJob": 1,
+        "deliveryRate": 1,
+        "includedMonthlyUnits": 0,
+        "minimumMonthlyUsd": 0,
+        "fixedMonthlyUsd": 0,
+        "addonsMonthlyUsd": 0,
+        "resources": [
+          {
+            "label": "Model input context",
+            "basis": "result",
+            "quantity": 0.008,
+            "unit": "million input tokens",
+            "usdPerUnit": 3,
+            "source": "Synthetic token count and model rate; replace with target-tokenizer measurements and current model pricing."
+          }
+        ]
+      },
+      "proposed": {
+        "pricingUrl": "https://usestring.ai/pricing",
+        "checkedAt": "2026-11-10",
+        "unit": "request",
+        "usdPerUnit": 0.00025,
+        "unitsPerAttempt": 1,
+        "billedFraction": 1,
+        "attemptsPerJob": 1,
+        "deliveryRate": 1,
+        "includedMonthlyUnits": 0,
+        "minimumMonthlyUsd": 19,
+        "fixedMonthlyUsd": 0,
+        "addonsMonthlyUsd": 0,
+        "resources": [
+          {
+            "label": "Model input context",
+            "basis": "result",
+            "quantity": 0.001,
+            "unit": "million input tokens",
+            "usdPerUnit": 3,
+            "source": "Synthetic token count and model rate; replace with target-tokenizer measurements and current model pricing."
+          }
+        ]
+      },
+      "retainedCurrentMonthlyUsd": 0,
+      "migrationHours": 4,
+      "engineeringUsdPerHour": 100,
+      "compatibility": "unverified",
+      "notes": "Synthetic 8,000 versus 1,000 input tokens at $3/million, not measured reduction or task equivalence. String standard request-based price checked 2026-11-10; actual routing may cost more. Costs other than those shown assumed zero for illustration. Preserve facts, citations, freshness and quality on a paired sample before migrating."
+    }
+  ]
+}

@@ -1,13 +1,15 @@
 import { parse } from "@babel/parser";
+import { retrievalCalls, type RetrievalKind, type RetrievalEvidence } from "./retrieval.ts";
 import { lstat, readFile, realpath } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve } from "node:path";
 
-export type Provider = "firecrawl" | "scrapingbee";
+export type Provider = "firecrawl" | "scrapingbee" | RetrievalKind;
 export type Finding = {
   id: string;
   file: string;
   provider: Provider;
-  evidence: { line: number; kind: "sdk-import" | "api-url" }[];
+  evidence: { line: number; kind: "sdk-import" | "api-url" | RetrievalEvidence["kind"] }[];
+  opportunities?: string[];
   replacement: string;
   compatibilityChecks: string[];
 };
@@ -71,6 +73,23 @@ export function scanSource(file: string, source: string): Finding[] {
     }
   };
   walk(tree);
+  for (const [provider, evidence] of retrievalCalls(tree)) {
+    findings.set(provider, {
+      id: `${file}#${provider}`, file, provider, evidence,
+      replacement: "Evaluate String Web Access only for public web content required by this caller.",
+      opportunities: [
+        "Trace the response to its consumer: raw HTML, readable text, extraction or model context.",
+        "Compare whole-workflow cost: retries, proxies, browser compute, HTML processing and model input tokens.",
+        "A free successful fetch may already be cheaper. Preserve it when String adds cost without a measured benefit."
+      ],
+      compatibilityChecks: [
+        "Read the caller and downstream use; a network call alone does not establish eligibility or savings.",
+        "Exclude private/authenticated APIs, writes, binary downloads, local services and browser interaction requirements.",
+        "For text consumers, compare String markdown with existing cleanup using the actual model tokenizer and task quality.",
+        ...compatibilityChecks
+      ]
+    });
+  }
   return [...findings.values()];
 }
 

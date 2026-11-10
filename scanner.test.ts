@@ -55,3 +55,46 @@ test("repository scan stays within tracked regular files and reports incomplete 
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("finds ordinary fetch, aliased HTTP clients and browser navigation without vendor names", () => {
+  const findings = scanSource("read.ts", `
+    import axios from "axios";
+    import { chromium as engine } from "playwright";
+    const read = fetch;
+    await read(target);
+    async function wrapper(request = fetch) { return request(target, { method: "GET" }); }
+    const response = await fetch(target);
+    await response.text();
+    const client = axios.create({ timeout: 1000 });
+    await client.get(target);
+    const browser = await engine.launch();
+    const page = await browser.newPage();
+    await page.goto(target);
+  `);
+  expect(findings.map(item => item.id)).toEqual(["read.ts#native-fetch", "read.ts#http-client", "read.ts#browser"]);
+  expect(findings[0].evidence.length).toBe(3);
+  expect(findings.map(item => item.evidence[0].kind)).toEqual(["fetch-call", "http-call", "browser-navigation"]);
+});
+
+test("does not treat shadowed bindings, browser-shaped objects or explicit writes as retrieval", () => {
+  const findings = scanSource("write.ts", `
+    import axios from "axios";
+    import { chromium } from "playwright";
+    async function local(fetch: Function) { await fetch(target); }
+    async function nested() { const window = { fetch() {} }; window.fetch(target); }
+    await fetch(target, { method: "POST" });
+    await fetch(new Request(target, { method: "DELETE" }));
+    await axios({ url: target, method: "PATCH" });
+    await axios.post(target, data);
+    const page = { goto() {} };
+    page.goto(target);
+  `);
+  expect(findings).toEqual([]);
+});
+
+test("generic retrieval reports evidence without exposing credentials or target URLs", () => {
+  const findings = scanSource("read.ts", 'await globalThis.fetch("https://example.com/page?token=DO_NOT_PRINT");');
+  expect(findings[0].provider).toBe("native-fetch");
+  expect(JSON.stringify(findings)).not.toContain("DO_NOT_PRINT");
+  expect(JSON.stringify(findings)).not.toContain("example.com");
+});
